@@ -1,0 +1,29 @@
+{
+  "name": "webrtc",
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "format": "npx prettier --write ."
+  },
+  "dependencies": {
+    "antd": "^4.18.2",
+    "nanoid": "^3.1.30",
+    "react": "^17.0.2",
+    "react-dom": "^17.0.2",
+    "react-json-view": "^1.21.3",
+    "react-router-dom": "^6.2.1",
+    "socket.io-client": "^4.4.0"
+  },
+  "devDependencies": {
+    "@types/react": "^17.0.33",
+    "@types/react-dom": "^17.0.10",
+    "@types/uuid": "^8.3.3",
+    "@vitejs/plugin-react": "^1.0.7",
+    "less": "^4.1.2",
+    "prettier": "^2.5.1",
+    "typescript": "^4.4.4",
+    "vite": "^2.7.2"
+  }
+}
