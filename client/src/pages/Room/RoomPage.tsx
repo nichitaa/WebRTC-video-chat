@@ -1,40 +1,26 @@
-import { useRef, useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import io from 'socket.io-client';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import ReactJson from 'react-json-view';
+import { Col, message, Modal, Row, Tag, Typography } from 'antd';
+import { useStoreContext } from '../../context/useStoreContext';
+import { PhoneOutlined } from '@ant-design/icons';
+import Header from './components/Header';
+import { IIceCandidateDto, ILogs, ISdpDto, ISignalDto } from '../../types';
+import { signalingServerUrl } from '../../consts';
 
-interface ILogs {
-  roomId?: string;
-  mySocketId?: string;
-  callerSocketId?: string;
-  answeredSocketId?: string;
-  receivedOffers: any[];
-  sentOffers: any[];
-  receivedAnswers: any[],
-  sentAnswers: any[],
-  receivedICECandidates: any[],
-  sentICECandidates: any[],
-  localDescription: any,
-  remoteDescription: any
-}
-
-interface ISdpDto {
-  target: string,
-  caller: string,
-  sdp: RTCSessionDescription
-}
-
-interface IIceCandidateDto {
-  target: string;
-  candidate: RTCIceCandidate;
-}
-
-const socket = io('http://localhost:8080');
+console.log('signalingServerUrl: ', signalingServerUrl);
+const socket = io(signalingServerUrl);
 
 const RoomPage = () => {
+  const navigate = useNavigate();
   const { roomId } = useParams();
+  const { nickname } = useStoreContext();
+
+  const [otherUserNickname, setOtherUserNickname] = useState<string | undefined>(undefined);
 
   const [logs, setLogs] = useState<ILogs>({
+    myNickname: nickname,
     roomId,
     callerSocketId: undefined,
     mySocketId: undefined,
@@ -60,29 +46,58 @@ const RoomPage = () => {
     navigator.mediaDevices.getUserMedia({ video: true, audio: true })
       .then((stream) => rtcPeerLogic(stream))
       .catch(err => console.log('error: ', err));
+
+    // cleanup on unmount
+    return removeMyStream;
   }, []);
 
   const rtcPeerLogic = (stream: MediaStream) => {
-    myVideo.current.srcObject = stream;
+    myVideo.current!.srcObject = stream;
     myStream.current = stream;
 
     setLogs(prev => ({ ...prev, mySocketId: socket.id }));
 
     // notify the server that someone joined the room
-    socket.emit('joinRoom', roomId);
+    socket.emit('joinRoom', { roomId, nickname });
 
-    socket.on('otherUserId', (userId: string) => {
-      setLogs(prev => ({ ...prev, callerSocketId: userId }));
-      otherUserId.current = userId;
-      peerRef.current = createPeer(userId);
+    socket.on('otherUserId', (args: ISignalDto) => {
+      const { otherUserNickname, otherUserSocketId } = args;
+
+      message.success(`Successfully accepted: ${otherUserNickname}`, 5);
+
+      setLogs(prev => ({ ...prev, callerSocketId: otherUserSocketId }));
+      otherUserId.current = otherUserSocketId;
+      peerRef.current = createPeer(otherUserSocketId);
+
       // 1 track for the video and 1 for the audio
       // gives access to the video and audio stream to our peer
       myStream.current?.getTracks().forEach(track => peerRef.current?.addTrack(track, myStream.current));
     });
 
-    socket.on('userJoined', (userId: string) => {
-      setLogs(prev => ({ ...prev, answeredSocketId: userId }));
-      otherUserId.current = userId;
+    socket.on('userJoined', (args: ISignalDto) => {
+      const { otherUserSocketId, otherUserNickname } = args;
+      showConfirmModal(otherUserNickname);
+      setLogs(prev => ({ ...prev, answeredSocketId: otherUserSocketId }));
+      otherUserId.current = otherUserSocketId;
+    });
+
+    socket.on('acceptedBy', (name: string) => {
+      message.success(`Successfully accepted by user: ${name}`, 6);
+      setOtherUserNickname(name);
+    });
+
+    socket.on('waitingToBeAcceptedBy', (name: string) => {
+      message.warning(`Waiting to be accepted by ${name}`);
+    });
+
+    socket.on('callRejected', (name: string) => {
+      message.error(`User ${name} did not accept your call!`, 10);
+      navigate('/');
+    });
+
+    socket.on('otherUserDisconnected', (name: string) => {
+      message.warning(`${name} just disconnected!`, 6);
+      partnerVideo.current.srcObject = null;
     });
 
     socket.on('offer', (offer: ISdpDto) => {
@@ -126,9 +141,28 @@ const RoomPage = () => {
       peerRef.current.addIceCandidate(candidate)
         .catch(err => console.log('error: ', err));
     });
+
   };
 
-  const createPeer = (userId?: string): RTCPeerConnection => {
+  const showConfirmModal = (otherUserNickname: string) => {
+    Modal.confirm({
+      icon: <PhoneOutlined />,
+      content: <Typography.Title level={5}>
+        user <Tag style={{ marginRight: 0 }} color={'volcano'}>{otherUserNickname}</Tag> wants to connect
+      </Typography.Title>,
+      cancelText: 'Reject',
+      okText: 'Accept',
+      onOk: () => {
+        socket.emit('callAccepted', { roomId, nickname });
+        setOtherUserNickname(otherUserNickname);
+      },
+      onCancel: () => {
+        socket.emit('callRejected', { roomId, nickname });
+      },
+    });
+  };
+
+  const createPeer = (otherUserSocketId?: string): RTCPeerConnection => {
     const peer = new RTCPeerConnection({
       iceServers: [
         {
@@ -157,9 +191,10 @@ const RoomPage = () => {
       partnerVideo.current.srcObject = event.streams[0];
     };
 
+
     // will be triggered only for the second peer
     peer.onnegotiationneeded = () => {
-      if (userId) {
+      if (otherUserSocketId) {
         peerRef.current.createOffer()
           .then(offer => {
             setLogs(prev => ({ ...prev, localDescription: JSON.parse(JSON.stringify(offer)) }));
@@ -167,7 +202,7 @@ const RoomPage = () => {
           })
           .then(() => {
             const payload: ISdpDto = {
-              target: userId,
+              target: otherUserSocketId,
               caller: socket.id,
               sdp: peerRef.current.localDescription!,
             };
@@ -181,25 +216,88 @@ const RoomPage = () => {
     return peer;
   };
 
+  const removeMyStream = () => {
+    myStream.current.getTracks().forEach((track) => {
+      track.stop();
+      track.dispatchEvent(new Event('ended'));
+    });
+  };
+
+  const onCallHangUp = () => {
+    removeMyStream();
+    socket.disconnect();
+    navigate('/');
+  };
+
+  /**
+   * On page close / refresh
+   */
+  window.addEventListener('beforeunload', (ev) => {
+    ev.preventDefault();
+    removeMyStream();
+    return true;
+  });
+
   return (
-    <div>
-      <ReactJson
-        src={logs}
-        displayDataTypes={false}
-        indentWidth={2}
-        shouldCollapse={(field) => {
-          const keys = ['sdp', 'remoteDescription', 'localDescription'];
-          if (field.type === 'array') return true;
-          return field.name ? keys.includes(field.name) : false;
-        }}
-        enableClipboard={false}
+    <>
+      <Header
+        myNickname={nickname}
+        otherUserNickname={otherUserNickname}
+        onCallHangUp={onCallHangUp}
       />
-      <p>Me</p>
-      <video width={200} ref={myVideo} autoPlay={true} muted={true} />
-      <br />
-      <p>Partner</p>
-      <video controls={true} width={200} ref={partnerVideo} autoPlay={true} muted={true} />
-    </div>
+      <Row style={{
+        padding: '10px',
+      }}>
+        <Col span={12}>
+          <div style={{
+            height: '400px',
+            position: 'relative',
+          }}>
+            {/*ME*/}
+            <video
+              style={{
+                position: 'absolute',
+                zIndex: 2,
+                top: 0,
+              }}
+              height={100}
+              ref={myVideo}
+              autoPlay={true}
+              muted={true} />
+
+            {/*PARTNER*/}
+            <video
+              style={{
+                position: 'absolute',
+                zIndex: 1,
+                top: 0,
+              }}
+              controls={true}
+              height={300}
+              ref={partnerVideo}
+              autoPlay={true}
+              muted={true} />
+
+          </div>
+        </Col>
+        <Col span={12}>
+          <ReactJson
+            name={'WebRTC-logs'}
+            src={logs}
+            theme={'harmonic'}
+            collapsed={true}
+            displayDataTypes={false}
+            indentWidth={2}
+            shouldCollapse={(field) => {
+              const keys = ['sdp', 'remoteDescription', 'localDescription'];
+              if (field.type === 'array') return true;
+              return field.name ? keys.includes(field.name) : false;
+            }}
+            enableClipboard={false}
+          />
+        </Col>
+      </Row>
+    </>
   );
 };
 

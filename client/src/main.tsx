@@ -1,10 +1,11 @@
-import {render} from 'react-dom';
-import {BrowserRouter} from "react-router-dom";
+import { render } from 'react-dom';
+import { BrowserRouter } from 'react-router-dom';
 import App from './App';
-import 'antd/dist/antd.less'
+import 'antd/dist/antd.less';
+import './index.less';
 
 const app = <BrowserRouter>
-  <App/>
-</BrowserRouter>
+  <App />
+</BrowserRouter>;
 
 render(app, document.getElementById('root'));

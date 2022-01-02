@@ -1,7 +1,5 @@
-import { ReactElement, FC, Suspense } from 'react';
+import { FC, ReactElement, Suspense } from 'react';
+import { Spin } from 'antd';
 
-export const Common: FC<{ component: ReactElement }> = ({
-  component,
-}): ReactElement => (
-  <Suspense fallback={<p>Loading...</p>}>{component}</Suspense>
-);
+export const Common: FC<{ component: ReactElement }> = ({ component }): ReactElement =>
+  <Suspense fallback={<Spin spinning={true} />}>{component}</Suspense>;

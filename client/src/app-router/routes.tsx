@@ -11,18 +11,13 @@ interface IRoutes {
   common: IRoute[];
 }
 
-export interface IRouteProps {
-  component: ReactElement;
-  isAuth: boolean;
-}
-
 // public
 
 // private
 
 // common
 const RoomPage = lazy(() => import('../pages/Room/RoomPage'));
-const HomePage = lazy(() => import('../pages/Home/HomePage'))
+const HomePage = lazy(() => import('../pages/Home/HomePage'));
 
 export const routes: IRoutes = {
   public: [],
@@ -30,7 +25,7 @@ export const routes: IRoutes = {
   common: [
     {
       path: '/',
-      component: <HomePage />
+      component: <HomePage />,
     },
     {
       path: '/room/:roomId',

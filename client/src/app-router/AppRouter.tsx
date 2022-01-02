@@ -1,6 +1,6 @@
 import { Route, Routes } from 'react-router-dom';
-import {Common} from "./Common";
-import {routes} from "./routes";
+import { Common } from './Common';
+import { routes } from './routes';
 
 export const AppRoutes = () => {
   return (

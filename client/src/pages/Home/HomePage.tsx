@@ -1,20 +1,12 @@
-import {useNavigate} from "react-router-dom";
-import {Button} from 'antd';
-import {nanoid} from 'nanoid';
+import Header from './components/Header';
+import Controls from './components/Controls';
 
-const HomePage = () => {
-  const navigate = useNavigate();
-
-  const createRoom = () => {
-    const id = nanoid(10)
-    navigate(`/room/${id}`)
-  }
-  
-  return (
+const HomePage = () =>
+  <div className={'homepage-container'}>
     <div>
-      <Button onClick={createRoom}>Create Room</Button>
+      <Header />
+      <Controls />
     </div>
-  );
-};
+  </div>;
 
 export default HomePage;
