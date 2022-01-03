@@ -1,6 +1,7 @@
 import { render } from 'react-dom';
 import { BrowserRouter } from 'react-router-dom';
 import { ThemeSwitcherProvider } from 'react-css-theme-switcher';
+import { clientPublicBaseUrl } from './consts';
 import App from './App';
 import './index.less';
 
@@ -9,8 +10,8 @@ import './index.less';
  * public directory is served as root path during dev and copied to the root of dist on build
  */
 const themes = {
-  dark: `${import.meta.env.VITE_PUBLIC_BASE_URL}/themes/dark-theme.css`,
-  light: `${import.meta.env.VITE_PUBLIC_BASE_URL}/themes/light-theme.css`,
+  dark: `${clientPublicBaseUrl}/themes/dark-theme.css`,
+  light: `${clientPublicBaseUrl}/themes/light-theme.css`,
 };
 
 const app =

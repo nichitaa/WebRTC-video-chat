@@ -1,23 +1,21 @@
-const gulp = require('gulp')
-const gulpless = require('gulp-less')
-const postcss = require('gulp-postcss')
-const debug = require('gulp-debug')
-var csso = require('gulp-csso')
+const gulp = require('gulp');
+const gulpless = require('gulp-less');
+const postcss = require('gulp-postcss');
+const debug = require('gulp-debug');
+const csso = require('gulp-csso');
+const autoprefixer = require('autoprefixer');
+const NpmImportPlugin = require('less-plugin-npm-import');
 
-const autoprefixer = require('autoprefixer')
-const NpmImportPlugin = require('less-plugin-npm-import')
-
-
-gulp.task('less', function () {
-  const plugins = [autoprefixer()]
+gulp.task('less', function() {
+  const plugins = [autoprefixer()];
 
   return gulp
     .src('./themes/*-theme.less')
-    .pipe(debug({title: 'Less files:'}))
+    .pipe(debug({ title: 'Less files:' }))
     .pipe(
       gulpless({
         javascriptEnabled: true,
-        plugins: [new NpmImportPlugin({prefix: '~'})],
+        plugins: [new NpmImportPlugin({ prefix: '~' })],
       }),
     )
     .pipe(postcss(plugins))
@@ -26,5 +24,5 @@ gulp.task('less', function () {
         debug: true,
       }),
     )
-    .pipe(gulp.dest('./public/themes'))
-})
+    .pipe(gulp.dest('./public/themes'));
+});
