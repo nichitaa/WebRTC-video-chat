@@ -16,9 +16,7 @@ const RoomPage = () => {
   const navigate = useNavigate();
   const { roomId } = useParams();
   const { nickname } = useStoreContext();
-
   const [otherUserNickname, setOtherUserNickname] = useState<string | undefined>(undefined);
-
   const [logs, setLogs] = useState<ILogs>({
     myNickname: nickname,
     roomId,
@@ -35,6 +33,7 @@ const RoomPage = () => {
     receivedICECandidates: [],
   });
 
+  // using Ref because I don't need page refresh on this variables updates
   const myVideo = useRef<HTMLVideoElement>(null!);
   const partnerVideo = useRef<HTMLVideoElement>(null!);
 
@@ -43,17 +42,22 @@ const RoomPage = () => {
   const myStream = useRef<MediaStream>(null!);
 
   useEffect(() => {
-    navigator.mediaDevices.getUserMedia({ video: true, audio: true })
-      .then((stream) => rtcPeerLogic(stream))
-      .catch(err => console.log('error: ', err));
+    (async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        myVideo.current!.srcObject = stream;
+        myStream.current = stream;
+        rtcPeerLogic();
+      } catch (err) {
+        console.error(err);
+      }
+    })();
 
     // cleanup on unmount
     return removeMyStream;
   }, []);
 
-  const rtcPeerLogic = (stream: MediaStream) => {
-    myVideo.current!.srcObject = stream;
-    myStream.current = stream;
+  const rtcPeerLogic = () => {
 
     setLogs(prev => ({ ...prev, mySocketId: socket.id }));
 
@@ -100,46 +104,53 @@ const RoomPage = () => {
       partnerVideo.current.srcObject = null;
     });
 
-    socket.on('offer', (offer: ISdpDto) => {
-      setLogs(prev => ({ ...prev, receivedOffers: [...prev.receivedOffers, offer] }));
-      // we are receiving the offer (call), we are not initiating the call, so we do not send the offer
-      // no need to pass the otherUserId
-      peerRef.current = createPeer();
-      const description = new RTCSessionDescription(offer.sdp);
-      peerRef.current.setRemoteDescription(description)
-        .then(() => {
-          setLogs(prev => ({ ...prev, remoteDescription: JSON.parse(JSON.stringify(description)) }));
-          myStream.current.getTracks().forEach(track => peerRef.current.addTrack(track, myStream.current));
-        })
-        .then(() => peerRef.current.createAnswer())
-        .then(answer => {
-          setLogs(prev => ({ ...prev, localDescription: JSON.parse(JSON.stringify(answer)) }));
-          return peerRef.current.setLocalDescription(answer);
-        })
-        .then(() => {
-          const payload: ISdpDto = {
-            target: offer.caller,
-            caller: socket.id,
-            sdp: peerRef.current.localDescription!,
-          };
-          setLogs(prev => ({ ...prev, sentAnswers: [...prev.sentAnswers, payload] }));
-          socket.emit('answer', payload);
-        });
+    socket.on('offer', async (offer: ISdpDto) => {
+      try {
+        setLogs(prev => ({ ...prev, receivedOffers: [...prev.receivedOffers, offer] }));
+        // we are receiving the offer (call), we are not initiating the call, so we do not send the offer
+        // no need to pass the otherUserId
+        peerRef.current = createPeer();
+        const description = new RTCSessionDescription(offer.sdp);
+        await peerRef.current.setRemoteDescription(description);
+        setLogs(prev => ({ ...prev, remoteDescription: JSON.parse(JSON.stringify(description)) }));
+        myStream.current.getTracks().forEach(track => peerRef.current.addTrack(track, myStream.current));
+
+        const answer = await peerRef.current.createAnswer();
+        setLogs(prev => ({ ...prev, localDescription: JSON.parse(JSON.stringify(answer)) }));
+        await peerRef.current.setLocalDescription(answer);
+
+        const payload: ISdpDto = {
+          target: offer.caller,
+          caller: socket.id,
+          sdp: peerRef.current.localDescription!,
+        };
+        setLogs(prev => ({ ...prev, sentAnswers: [...prev.sentAnswers, payload] }));
+        socket.emit('answer', payload);
+      } catch (err) {
+        console.error(err);
+      }
     });
 
-    socket.on('answer', (answer: ISdpDto) => {
-      setLogs(prev => ({ ...prev, receivedAnswers: [...prev.receivedAnswers, answer] }));
-      const description = new RTCSessionDescription(answer.sdp);
-      peerRef.current.setRemoteDescription(description)
-        .then(() => setLogs(prev => ({ ...prev, remoteDescription: JSON.parse(JSON.stringify(description)) })))
-        .catch(err => console.log('error: ', err));
+    socket.on('answer', async (answer: ISdpDto) => {
+      try {
+        setLogs(prev => ({ ...prev, receivedAnswers: [...prev.receivedAnswers, answer] }));
+        const description = new RTCSessionDescription(answer.sdp);
+        await peerRef.current.setRemoteDescription(description);
+        setLogs(prev => ({ ...prev, remoteDescription: JSON.parse(JSON.stringify(description)) }));
+      } catch (err) {
+        console.error(err);
+      }
     });
 
-    socket.on('ICECandidate', (ICECandidate) => {
-      setLogs(prev => ({ ...prev, receivedICECandidates: [...prev.receivedICECandidates, ICECandidate] }));
-      const candidate = new RTCIceCandidate(ICECandidate);
-      peerRef.current.addIceCandidate(candidate)
-        .catch(err => console.log('error: ', err));
+    socket.on('ICECandidate', async (ICECandidate) => {
+      try {
+        console.log('ICECandidate');
+        setLogs(prev => ({ ...prev, receivedICECandidates: [...prev.receivedICECandidates, ICECandidate] }));
+        const candidate = new RTCIceCandidate(ICECandidate);
+        await peerRef.current.addIceCandidate(candidate);
+      } catch (err) {
+        console.error(err);
+      }
     });
 
   };
@@ -197,6 +208,7 @@ const RoomPage = () => {
     });
 
     peer.onicecandidate = (event) => {
+      console.log('onicecandidate');
       if (event.candidate) {
         const payload: IIceCandidateDto = {
           target: otherUserId.current,
@@ -208,28 +220,30 @@ const RoomPage = () => {
     };
 
     peer.ontrack = (event) => {
+      if (partnerVideo.current.srcObject) return;
       partnerVideo.current.srcObject = event.streams[0];
     };
 
 
-    // will be triggered only for the second peer
-    peer.onnegotiationneeded = () => {
-      if (otherUserSocketId) {
-        peerRef.current.createOffer()
-          .then(offer => {
-            setLogs(prev => ({ ...prev, localDescription: JSON.parse(JSON.stringify(offer)) }));
-            return peerRef.current.setLocalDescription(offer);
-          })
-          .then(() => {
-            const payload: ISdpDto = {
-              target: otherUserSocketId,
-              caller: socket.id,
-              sdp: peerRef.current.localDescription!,
-            };
-            setLogs(prev => ({ ...prev, sentOffers: [...prev.sentOffers, payload] }));
-            socket.emit('offer', payload);
-          })
-          .catch(err => console.log('error: ', err));
+    // will be triggered only by the Peer 1
+    peer.onnegotiationneeded = async () => {
+      try {
+        if (otherUserId) {
+          const offer = await peerRef.current.createOffer();
+          await peerRef.current.setLocalDescription(offer);
+          setLogs(prev => ({ ...prev, localDescription: JSON.parse(JSON.stringify(offer)) }));
+
+          // signal
+          const payload: ISdpDto = {
+            target: otherUserSocketId!,
+            caller: socket.id,
+            sdp: peerRef.current.localDescription!,
+          };
+          setLogs(prev => ({ ...prev, sentOffers: [...prev.sentOffers, payload] }));
+          socket.emit('offer', payload);
+        }
+      } catch (err) {
+        console.error(err);
       }
     };
 
