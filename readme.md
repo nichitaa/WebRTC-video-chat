@@ -18,12 +18,12 @@ To open diagram, download them ([1](https://github.com/nichitaa/WebRTC-video-cha
 
 Signaling server (implemented using web sockets) 
 
-![web-RTC-signaling](.\diagrams\signaling-flow.jpg)
+![web-RTC-signaling](https://github.com/nichitaa/WebRTC-video-chat/blob/main/diagrams/signaling-flow.jpg)
 
 Web-RTC flow
 
-![web-rtc-flow](.\diagrams\web-rtc-flow.jpg)
+![web-rtc-flow](https://github.com/nichitaa/WebRTC-video-chat/blob/main/diagrams/web-rtc-flow.jpg)
 
 STUN vs TURN 
 
-![stun-vs-turn](.\diagrams\stun-vs-turn.jpg)
+![stun-vs-turn](https://github.com/nichitaa/WebRTC-video-chat/blob/main/diagrams/stun-vs-turn.jpg)
