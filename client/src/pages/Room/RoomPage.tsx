@@ -267,40 +267,27 @@ const RoomPage = () => {
       />
       <Row style={{
         padding: '10px',
-      }}>
-        <Col span={12}>
-          <div style={{
-            height: '400px',
-            position: 'relative',
-          }}>
+      }} gutter={10}>
+        <Col xs={24} sm={24} md={12} lg={12} xl={12}>
+          <div className={'video-container'}>
             {/*ME*/}
             <video
-              style={{
-                position: 'absolute',
-                zIndex: 2,
-                top: 0,
-              }}
-              height={100}
+              className={'my-video'}
               ref={myVideo}
               autoPlay={true}
               muted={true} />
 
             {/*PARTNER*/}
             <video
-              style={{
-                position: 'absolute',
-                zIndex: 1,
-                top: 0,
-              }}
+              className={'partner-video'}
               controls={true}
-              height={300}
               ref={partnerVideo}
               autoPlay={true}
               muted={true} />
 
           </div>
         </Col>
-        <Col span={12}>
+        <Col xs={24} sm={24} md={12} lg={12} xl={12}>
           <ReactJson
             name={'WebRTC-logs'}
             src={logs}

@@ -46,7 +46,7 @@ const Controls = () => {
   return (
     <div className={'controls-container'}>
       <Row gutter={8}>
-        <Col span={8}>
+        <Col xs={24} sm={12} md={8} lg={8} xl={8} className={'responsive-col'}>
           <Typography.Title level={4} className={'controls-text'}>
             <Typography.Text code={true}>About you</Typography.Text>
           </Typography.Title>
@@ -61,7 +61,7 @@ const Controls = () => {
             Generate Nickname
           </Button>
         </Col>
-        <Col span={8}>
+        <Col xs={24} sm={12} md={8} lg={8} xl={8} className={'responsive-col'}>
           <Typography.Title level={4} className={'controls-text'}>
             <Typography.Text code={true}>Make a room</Typography.Text>
           </Typography.Title>
@@ -88,7 +88,7 @@ const Controls = () => {
             Join your room
           </Button>
         </Col>
-        <Col span={8}>
+        <Col xs={24} sm={12} md={8} lg={8} xl={8} className={'responsive-col'}>
           <Typography.Title level={4} className={'controls-text'}>
             <Typography.Text code={true}>Join a call</Typography.Text>
           </Typography.Title>
