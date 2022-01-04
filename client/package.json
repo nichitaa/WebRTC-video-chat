@@ -13,6 +13,7 @@
   "dependencies": {
     "@ant-design/icons": "^4.7.0",
     "antd": "^4.18.2",
+    "auth-react-router": "^0.1.4",
     "nanoid": "^3.1.30",
     "react": "^17.0.2",
     "react-css-theme-switcher": "^0.3.0",
